@@ -76,8 +76,50 @@ END;
 - Use a simple cursor to fetch and display employee names and designations.
 - Implement exception handling to catch the relevant exceptions and display appropriate messages.
 
+**Code:**
+```
+SET SERVEROUTPUT ON;
+
+DECLARE
+    CURSOR emp_cur IS
+        SELECT emp_name, designation
+        FROM employees8
+        ORDER BY emp_id;
+    v_name   employees8.emp_name%TYPE;
+    v_desig  employees8.designation%TYPE;
+BEGIN
+    OPEN emp_cur;
+    FETCH emp_cur INTO v_name, v_desig;
+
+    -- No row in the first fetch means the table is empty
+    IF emp_cur%NOTFOUND THEN
+        RAISE NO_DATA_FOUND;
+    END IF;
+
+    DBMS_OUTPUT.PUT_LINE(RPAD('EMP_NAME', 16) || 'DESIGNATION');
+    DBMS_OUTPUT.PUT_LINE('---------------------------');
+    WHILE emp_cur%FOUND LOOP
+        DBMS_OUTPUT.PUT_LINE(RPAD(v_name, 16) || v_desig);
+        FETCH emp_cur INTO v_name, v_desig;
+    END LOOP;
+    CLOSE emp_cur;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('No employee records found.');
+        IF emp_cur%ISOPEN THEN
+            CLOSE emp_cur;
+        END IF;
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error occurred: ' || SQLERRM);
+        IF emp_cur%ISOPEN THEN
+            CLOSE emp_cur;
+        END IF;
+END;
+```
+
 **Output:**  
-The program should display the employee details or an error message.
+
+<img width="707" height="318" alt="image" src="https://github.com/user-attachments/assets/f67b967a-4bab-4f07-aa7e-f7077c6176ff" />
 
 ---
 
@@ -95,8 +137,56 @@ The program should display the employee details or an error message.
 - Use a parameterized cursor to accept a salary range as input and fetch employees within that range.
 - Implement exception handling to catch and display relevant error messages.
 
+**Code:**
+```
+SET SERVEROUTPUT ON;
+
+DECLARE
+    CURSOR sal_cur (p_min NUMBER, p_max NUMBER) IS
+        SELECT emp_name, designation, salary
+        FROM employees8
+        WHERE salary BETWEEN p_min AND p_max
+        ORDER BY emp_id;
+    v_name   employees8.emp_name%TYPE;
+    v_desig  employees8.designation%TYPE;
+    v_sal    employees8.salary%TYPE;
+    v_min    NUMBER := 40000;   -- lower limit of the salary range
+    v_max    NUMBER := 50000;   -- upper limit of the salary range
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Salary range: ' || v_min || ' to ' || v_max);
+    OPEN sal_cur(v_min, v_max);
+    FETCH sal_cur INTO v_name, v_desig, v_sal;
+
+    IF sal_cur%NOTFOUND THEN
+        RAISE NO_DATA_FOUND;
+    END IF;
+
+    DBMS_OUTPUT.PUT_LINE(RPAD('EMP_NAME', 16) || RPAD('DESIGNATION', 14)
+                         || 'SALARY');
+    DBMS_OUTPUT.PUT_LINE('------------------------------------');
+    WHILE sal_cur%FOUND LOOP
+        DBMS_OUTPUT.PUT_LINE(RPAD(v_name, 16) || RPAD(v_desig, 14)
+                             || v_sal);
+        FETCH sal_cur INTO v_name, v_desig, v_sal;
+    END LOOP;
+    CLOSE sal_cur;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('No employees found in this salary range.');
+        IF sal_cur%ISOPEN THEN
+            CLOSE sal_cur;
+        END IF;
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error occurred: ' || SQLERRM);
+        IF sal_cur%ISOPEN THEN
+            CLOSE sal_cur;
+        END IF;
+END;
+```
+
 **Output:**  
-The program should display the employee details within the specified salary range or an error message if no data is found.
+
+<img width="707" height="305" alt="image" src="https://github.com/user-attachments/assets/27e21795-5ab6-4848-9268-7dea3d7ad5a1" />
 
 ---
 
@@ -114,8 +204,41 @@ The program should display the employee details within the specified salary rang
 - Use a cursor FOR loop to fetch and display employee names along with their department numbers.
 - Implement exception handling to catch the relevant exceptions.
 
+**Code:**
+```
+SET SERVEROUTPUT ON;
+
+DECLARE
+    CURSOR emp_cur IS
+        SELECT emp_name, dept_no
+        FROM employees8
+        ORDER BY emp_id;
+    v_count  NUMBER := 0;
+BEGIN
+    DBMS_OUTPUT.PUT_LINE(RPAD('EMP_NAME', 16) || 'DEPT_NO');
+    DBMS_OUTPUT.PUT_LINE('------------------------');
+
+    -- The cursor FOR loop opens, fetches and closes the cursor itself
+    FOR rec IN emp_cur LOOP
+        DBMS_OUTPUT.PUT_LINE(RPAD(rec.emp_name, 16) || rec.dept_no);
+        v_count := v_count + 1;
+    END LOOP;
+
+    -- The loop body never runs when the table is empty
+    IF v_count = 0 THEN
+        RAISE NO_DATA_FOUND;
+    END IF;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('No employees found in the database.');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error occurred: ' || SQLERRM);
+END;
+```
+
 **Output:**  
-The program should display employee names with their department numbers or the appropriate error message if no data is found.
+
+<img width="712" height="331" alt="image" src="https://github.com/user-attachments/assets/7bae5c2c-fad9-424d-ac75-30d8f400550f" />
 
 ---
 
@@ -133,8 +256,49 @@ The program should display employee names with their department numbers or the a
 - Declare a cursor using `%ROWTYPE` to fetch complete rows from the `employees` table.
 - Implement exception handling to catch the relevant exceptions and display appropriate messages.
 
+**Code:**
+```
+SET SERVEROUTPUT ON;
+
+DECLARE
+    CURSOR emp_cur IS
+        SELECT * FROM employees8 ORDER BY emp_id;
+    v_emp  emp_cur%ROWTYPE;
+BEGIN
+    OPEN emp_cur;
+    FETCH emp_cur INTO v_emp;
+
+    IF emp_cur%NOTFOUND THEN
+        RAISE NO_DATA_FOUND;
+    END IF;
+
+    DBMS_OUTPUT.PUT_LINE(RPAD('EMP_ID', 8) || RPAD('EMP_NAME', 16) ||
+                         RPAD('DESIGNATION', 14) || 'SALARY');
+    DBMS_OUTPUT.PUT_LINE('--------------------------------------------');
+    WHILE emp_cur%FOUND LOOP
+        DBMS_OUTPUT.PUT_LINE(RPAD(v_emp.emp_id, 8) ||
+                             RPAD(v_emp.emp_name, 16) ||
+                             RPAD(v_emp.designation, 14) ||
+                             v_emp.salary);
+        FETCH emp_cur INTO v_emp;
+    END LOOP;
+    CLOSE emp_cur;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('No employee records found.');
+        IF emp_cur%ISOPEN THEN
+            CLOSE emp_cur;
+        END IF;
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error occurred: ' || SQLERRM);
+        IF emp_cur%ISOPEN THEN
+            CLOSE emp_cur;
+        END IF;
+END;
+```
+
 **Output:**  
-The program should display employee records or the appropriate error message if no data is found.
+<img width="715" height="361" alt="image" src="https://github.com/user-attachments/assets/97525a95-a7fb-45fc-8987-4eed1b2bda3d" />
 
 ---
 
@@ -152,8 +316,51 @@ The program should display employee records or the appropriate error message if 
 - Use a cursor with the `FOR UPDATE` clause to lock the rows of employees in a specific department and update their salary.
 - Implement exception handling to handle `NO_DATA_FOUND` or other errors that may occur.
 
+**Code:**
+```
+SET SERVEROUTPUT ON;
+
+DECLARE
+    CURSOR emp_cur (p_dept NUMBER) IS
+        SELECT emp_id, emp_name, salary
+        FROM employees8
+        WHERE dept_no = p_dept
+        ORDER BY emp_id
+        FOR UPDATE;
+    v_dept    NUMBER := 20;     -- department whose salary is increased
+    v_new_sal NUMBER;
+    v_count   NUMBER := 0;
+BEGIN
+    FOR rec IN emp_cur(v_dept) LOOP
+        v_new_sal := rec.salary + (rec.salary * 0.10);   -- 10% increment
+
+        UPDATE employees8
+        SET salary = v_new_sal
+        WHERE CURRENT OF emp_cur;
+
+        v_count := v_count + 1;
+        DBMS_OUTPUT.PUT_LINE(rec.emp_name || ': ' || rec.salary ||
+                             ' -> ' || v_new_sal);
+    END LOOP;
+
+    IF v_count = 0 THEN
+        RAISE NO_DATA_FOUND;
+    END IF;
+
+    COMMIT;
+    DBMS_OUTPUT.PUT_LINE(v_count || ' employee(s) updated in department '
+                         || v_dept);
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('No employees found in department ' || v_dept);
+    WHEN OTHERS THEN
+        ROLLBACK;
+        DBMS_OUTPUT.PUT_LINE('Error occurred: ' || SQLERRM);
+END;
+```
+
 **Output:**  
-The program should update employee salaries and display a message, or it should display an error message if no data is found.
+<img width="706" height="267" alt="image" src="https://github.com/user-attachments/assets/0b7a853e-38bb-4f81-99e9-b80ce96c7083" />
 
 ---
 
